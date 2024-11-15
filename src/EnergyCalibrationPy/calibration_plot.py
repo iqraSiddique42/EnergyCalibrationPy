@@ -32,7 +32,7 @@ def plot_calibrated_spectrum(
     
     # Perform linear calibration (regression)
     model = np.polyfit(area_values, energy_values, 1)
-    calibrated_energy = np.polyval(model, data['x'].to_numpy())
+    calibrated_energy = np.polyval(model, data['area'].to_numpy())
     
     # Plot the calibrated spectrum
     plt.figure(figsize=figsize)
