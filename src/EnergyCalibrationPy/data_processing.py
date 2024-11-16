@@ -12,7 +12,7 @@ def load_data(file_path, column_names=None, skip_rows=4):
     Returns:
         pd.DataFrame: Processed data with columns 'x' and 'counts'.
     """
-    column_names = column_names or ['x', 'counts']  # Default column names
+    column_names = column_names or ['area', 'counts']  # Default column names
     try:
         df = pd.read_csv(file_path, skiprows=skip_rows)
         df.columns = column_names

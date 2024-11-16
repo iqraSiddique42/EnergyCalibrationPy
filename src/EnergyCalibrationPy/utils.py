@@ -13,6 +13,7 @@ def generate_colors(num_colors, cmap_name="tab10"):
     cmap = get_cmap(cmap_name)
     return [cmap(i % cmap.N) for i in range(num_colors)]
 
+
 def validate_calibration_data(energy_values, area_values):
     """
     Validates that the calibration data lists have the same length.
@@ -27,7 +28,9 @@ def validate_calibration_data(energy_values, area_values):
     if len(energy_values) != len(area_values):
         raise ValueError("Energy values and area values must have the same length.")
 
+
 import os
+
 
 def check_file_exists(file_path):
     """
@@ -42,6 +45,7 @@ def check_file_exists(file_path):
     if not os.path.isfile(file_path):
         raise FileNotFoundError(f"The file {file_path} does not exist.")
 
+
 def convert_weber_to_volts(weber_value, conversion_factor=1e6):
     """
     Converts a value from Weber to Volts using a specified conversion factor.
@@ -54,6 +58,7 @@ def convert_weber_to_volts(weber_value, conversion_factor=1e6):
         float: The converted value in Volts.
     """
     return weber_value * conversion_factor
+
 
 def format_axis(ax, xlabel, ylabel, fontsize=14):
     """
@@ -69,3 +74,23 @@ def format_axis(ax, xlabel, ylabel, fontsize=14):
     ax.set_ylabel(ylabel, fontsize=fontsize)
     ax.tick_params(axis='both', which='major', labelsize=fontsize - 2)
 
+
+###########################################################################
+
+def calculate_resolution_and_fwhm(sigma, mu):
+    """
+    Calculate the energy resolution as a percentage.
+
+    Parameters:
+    sigma (float): Standard deviation of the Gaussian peak.
+    mu (float): Centroid (mean) of the peak.
+
+    Returns:
+    float: Resolution as a percentage.
+    """
+    # Calculate FWHM from sigma
+    fwhm = 2.355 * sigma
+
+    # Calculate resolution
+    resolution = (fwhm / mu) * 100
+    return fwhm, resolution
