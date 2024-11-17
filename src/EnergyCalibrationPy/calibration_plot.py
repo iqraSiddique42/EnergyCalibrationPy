@@ -238,6 +238,7 @@ def plot_fwhm_resolution(mu_values, sigma_values, x_label=None, fontsize=16, sav
     ax[1].set_ylabel('Resolution', fontsize=fontsize)
     ax[1].set_title('Energy Resolution %', fontsize=fontsize)
     ax[1].grid(False)
+    f.tight_layout()
 
     # Save the figure if a save path is provided
     if save_plot:

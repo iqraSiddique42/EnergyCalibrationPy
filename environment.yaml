@@ -9,4 +9,7 @@ dependencies:
     - scipy
     - pandas
     - seaborn
+    - pip
+    - pip:
+          - pymultifit==0.1.4a1
 
