@@ -70,7 +70,7 @@ def plot_calibrated_spectrum(data,
 
 ######################################################################################################
 
-def process_and_plot_files(file_path, x_variable, y_variable, x_label, y_label, plot_color, fontsize=16,
+def process_and_plot_files(file_path, x_variable, y_variable, x_label, y_label, legend_label, plot_color, fontsize=16,
                            save_file_name=None, save_plot=None, plot_dpi=None):
     filename = file_path.split('/')[-1]
     with open(file_path, 'r') as file:
@@ -81,7 +81,7 @@ def process_and_plot_files(file_path, x_variable, y_variable, x_label, y_label, 
             df = pd.read_csv(file_path)
     df.columns = [x_variable, y_variable]
     plt.figure(figsize=(10, 6))  # Adjust figure size here
-    plt.plot(df[x_variable], df[y_variable], color=plot_color)
+    plt.plot(df[x_variable], df[y_variable], color=plot_color, label = legend_label)
     plt.xlabel(x_label, fontsize=fontsize)
     plt.ylabel(y_label, fontsize=fontsize)
     plt.title(f'Plot of {filename}', fontsize=fontsize)
@@ -198,7 +198,7 @@ def regression_and_plot_with_peaks(energy_values, area_values, title='Regression
 
 
 def plot_fwhm_resolution(mu_values, sigma_values, x_label=None, fontsize=16, save_plot=None, save_file_name=None,
-                         plot_dpi=None):
+                         plot_dpi=None, figure_size = None):
     """
     Creates regression plots for FWHM and Resolution against Mu values.
 
@@ -222,7 +222,7 @@ def plot_fwhm_resolution(mu_values, sigma_values, x_label=None, fontsize=16, sav
                          'Resolution': res})
 
     # Create the regression plots
-    f, ax = plt.subplots(1, 2)
+    f, ax = plt.subplots(1, 2, figsize=figure_size)
 
     # First plot: Mu vs FWHM
     sns.regplot(x='Mu', y='FWHM', data=data, ci=None, scatter_kws={'s': 100}, line_kws={'color': 'red'}, ax=ax[0])

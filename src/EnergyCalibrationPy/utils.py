@@ -103,9 +103,10 @@ def calculate_resolution_and_fwhm(sigma, mu):
 ###########################################################################
 
 def gaussian_fitter(dataframe, x, y, p0, normalization=1.) -> GaussianFitter:
-    dataframe[x] = dataframe[x] / normalization
+    temp_ = dataframe.copy(deep=True)
+    temp_[x] = temp_[x] / normalization
 
-    fitter = GaussianFitter(len(p0), dataframe[x], dataframe[y])
+    fitter = GaussianFitter(len(p0), temp_[x], temp_[y])
     fitter.fit(p0)
     fitter.plot_fit(show_individual=True, auto_label=True)
     plt.show()
@@ -113,10 +114,9 @@ def gaussian_fitter(dataframe, x, y, p0, normalization=1.) -> GaussianFitter:
     return fitter
 
 
-def parameter_extractor(dataframe, x, fitter, gaussian_numbers, normalization=1.):
+def parameter_extractor(fitter, gaussian_numbers, normalization=1.):
     amp_, mu_, std_ = fitter.get_parameters(True, True, True, gaussian_numbers)
 
-    dataframe[x] = dataframe[x] * normalization
     mu_ = mu_ * normalization
     std_ = std_ * normalization
 
