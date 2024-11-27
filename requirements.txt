@@ -4,4 +4,4 @@ matplotlib
 seaborn
 scipy
 setuptools
-pymultifit==0.1.4a1
+pymultifit
