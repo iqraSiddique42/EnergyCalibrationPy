@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.cm import get_cmap
 import seaborn as sns
+from scipy.interpolate import interp1d
 
 from EnergyCalibrationPy.utils import calculate_resolution_and_fwhm
 
@@ -244,3 +245,68 @@ def plot_fwhm_resolution(mu_values, sigma_values, x_label=None, fontsize=16, sav
     if save_plot:
         plt.savefig(save_file_name, dpi=plot_dpi)
     plt.show()
+
+####################################################################################################################
+
+def process_and_plot_spectra(signal, background, signal_duration, background_duration, xlabel = None, ylabel = None,
+                             title = None, figure_size = None,scale = False):
+    """
+    Process and plot spectra for signal and background data. Interpolates data,
+    scales the background to match the signal, subtracts the background, and plots
+    the signal, background, and corrected spectra.
+
+    Parameters:
+    -----------
+    signal : pandas.DataFrame
+        DataFrame containing 'area' and 'counts' columns for the signal spectrum.
+    background : pandas.DataFrame
+        DataFrame containing 'area' and 'counts' columns for the background spectrum.
+    signal_duration : int
+        Duration of signal data collection in seconds.
+    background_duration : int
+        Duration of background data collection in seconds.
+
+    Returns:
+    --------
+    common_x : numpy.ndarray
+        Common x-axis (area) used for interpolation.
+    corrected_signal : numpy.ndarray
+        The background-subtracted and normalized signal spectrum.
+    """
+    # Determine the overlapping area range
+    overlap_min = max(signal['area'].min(), background['area'].min())
+    overlap_max = min(signal['area'].max(), background['area'].max())
+
+    # Define a common x-axis within the overlapping range
+    common_x = np.linspace(overlap_min, overlap_max, 10_000)
+
+    # Interpolate the signal and background spectra
+    signal_interp = interp1d(signal['area'], signal['counts'], kind='linear', fill_value="extrapolate")
+    background_interp = interp1d(background['area'], background['counts'], kind='linear', fill_value="extrapolate")
+
+    # Evaluate the interpolated values on the common x-axis
+    signal_values = signal_interp(common_x)
+    background_values = background_interp(common_x)
+
+    # Scale the background to match the signal's peak
+    scaling_factor = signal_values.max() / background_values.max() if scale else 1
+    background_scaled = background_values * scaling_factor
+
+    # Calculate the normalized and background-subtracted signal
+    corrected_signal = (signal_values / signal_duration) - (background_scaled / background_duration)
+
+    # Plot the spectra
+    plt.figure(figsize= figure_size)
+
+    plt.plot(common_x, signal_values / signal_duration, label='Signal', color='blue')
+    plt.plot(common_x, background_scaled / background_duration, label='Background', color='red')
+    plt.plot(common_x, corrected_signal, label='Corrected Signal', color='green')
+
+    plt.title(title, fontsize=16)
+    plt.xlabel(xlabel, fontsize=14)
+    plt.ylabel(ylabel, fontsize=14)
+    plt.legend(fontsize=12)
+    plt.grid(True)
+    plt.show()
+
+    return common_x, corrected_signal
