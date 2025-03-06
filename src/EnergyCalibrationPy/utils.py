@@ -1,4 +1,7 @@
-from matplotlib import pyplot as plt
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
 from pymultifit.fitters import GaussianFitter
 
 
@@ -31,9 +34,6 @@ def validate_calibration_data(energy_values, area_values):
     """
     if len(energy_values) != len(area_values):
         raise ValueError("Energy values and area values must have the same length.")
-
-
-import os
 
 
 def check_file_exists(file_path):
@@ -102,25 +102,35 @@ def calculate_resolution_and_fwhm(sigma, mu):
 
 ###########################################################################
 
-def gaussian_fitter(dataframe, x, y, p0, normalization=1., xlabel = None, ylabel = None, title = None, fig_size=(12, 6)) -> GaussianFitter:
+def gaussian_fitter(dataframe, x, y, p0, normalization=1., x_label=None, y_label=None, title=None,
+                    fig_size=(12, 6)) -> GaussianFitter:
     temp_ = dataframe.copy(deep=True)
     temp_[x] = temp_[x] / normalization
 
     _, ax = plt.subplots(1, 1, figsize=fig_size)
 
-    fitter = GaussianFitter(len(p0), temp_[x], temp_[y])
+    fitter = GaussianFitter(temp_[x], temp_[y])
     fitter.fit(p0)
-    fitter.plot_fit(show_individual=True, x_label=xlabel, y_label = ylabel, title = title, axis=ax)
+    fitter.plot_fit(show_individual=True, x_label=x_label, y_label=y_label, title=title, axis=ax)
     plt.tight_layout()
     plt.show()
 
     return fitter
 
 
-def parameter_extractor(fitter, gaussian_numbers, normalization=1.):
-    amp_, mu_, std_ = fitter.get_parameters(select=gaussian_numbers)
+def parameter_extractor(fitter, gaussian_numbers, normalization=1., get_errors=False):
+    result = fitter.get_model_parameters(select=gaussian_numbers, errors=get_errors)
+    if get_errors:
+        (amp_, mu_, std_), (amp_e, mu_e, std_e) = result
+        amplitude = np.column_stack([amp_, amp_e])
+        mean = np.column_stack([mu_, mu_e]) * normalization
+        standard_deviation = np.column_stack([std_, std_e]) * normalization
 
-    mu_ = mu_ * normalization
-    std_ = std_ * normalization
+        return amplitude, mean, standard_deviation
+    else:
+        amp_, mu_, std_ = result
 
-    return amp_, mu_, std_
+        mu_ = mu_ * normalization
+        std_ = std_ * normalization
+
+        return amp_, mu_, std_

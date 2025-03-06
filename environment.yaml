@@ -1,15 +1,15 @@
 name: EnergyCalibrationPy
 channels:
-    - default
-    - conda-forge
+  - default
+  - conda-forge
 dependencies:
-    - python==3.9.*
-    - numpy==1.26.4
-    - matplotlib
-    - scipy
-    - pandas
-    - seaborn
-    - pip
-    - pip:
-          - pymultifit==0.1.4a1
+  - python==3.9.*
+  - numpy<2.0.1
+  - matplotlib
+  - scipy
+  - pandas
+  - seaborn
+  - pip
+  - pip:
+      - pymultifit
 
