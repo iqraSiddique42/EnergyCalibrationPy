@@ -1,4 +1,4 @@
 [build-system]
-requires = ["setuptools", "numpy==1.26.4", "matplotlib", "scipy", "pandas", "pymultifit"]
+requires = ["setuptools", "numpy<2.0.1", "matplotlib", "scipy", "pandas", "pymultifit"]
 
 build-backend = "setuptools.build_meta:__legacy__"
