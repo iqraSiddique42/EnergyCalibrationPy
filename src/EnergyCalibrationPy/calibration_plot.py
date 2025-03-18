@@ -16,7 +16,7 @@ def plot_calibrated_spectrum(data,
                              color='blue',
                              title='Energy Calibration',
                              x_label='Energy [keV]',
-                             y_label='Counts',
+                             y_label='Counts/s',
                              fig_size=(12, 8),
                              save_plot=False,
                              save_file_name=None,
@@ -56,7 +56,7 @@ def plot_calibrated_spectrum(data,
     font_size: int, optional
         The size of the font used for the plot. Default is 16.
     """
-    values = values[:, 0]
+    # values = values[:, 0]
 
     if len(energy_values) != len(values):
         raise ValueError("Energy values and area values must have the same length.")
@@ -117,11 +117,11 @@ def process_and_plot_files(file_path, x_variable, y_variable, x_label, y_label, 
 
 ######################################################################################################
 
-def regression_and_plot_with_peaks(energy_values, area_values, title='Regression Plot of Energy vs. Area',
+def regression_and_plot_with_peaks(energy_values, area_values, sigma_values, title='Regression Plot Energy → Area',
                                    plot_color='red',
                                    co60=False, cs137=False, na22=False, ba133=False, lyso=False,
                                    extrapolation_range=(10, 1500), num_points=500, x_label=None, fontsize=16,
-                                   y_label=None, save_plot=None, save_file_name=None, plot_dpi=None):
+                                   y_label=None, save_plot=None, save_file_name=None, plot_dpi=None, save_data=False):
     """
     Performs linear regression on energy-area data, plots the data points, regression line, and confidence interval,
     and highlights peaks for specific isotopes.
@@ -132,7 +132,7 @@ def regression_and_plot_with_peaks(energy_values, area_values, title='Regression
         title (str): Title of the plot.
         plot_color (str): Color of the regression line and confidence interval.
         co60_peaks (list): Energies for Co-60 peaks.
-        cs137_peak (float): Energy for Cs-137 peak.
+        cs137_peak (list): Energy for Cs-137 peak.
         na22_peaks (list): Energies for Na-22 peaks.
         ba133_peaks (list): Energies for Ba-133 peaks.
         extrapolation_range (tuple): Range for extrapolation in energy values.
@@ -140,8 +140,8 @@ def regression_and_plot_with_peaks(energy_values, area_values, title='Regression
     """
     # Convert energy and area to numpy arrays
     energy = np.array(energy_values)
-    area = area_values[:, 0]
-    area_error = area_values[:, 1]
+    area = area_values
+    area_error = sigma_values
 
     # Perform linear regression
     polynomial_order = 1
@@ -160,13 +160,23 @@ def regression_and_plot_with_peaks(energy_values, area_values, title='Regression
     # Plot original data points, regression line, and confidence interval
     plt.figure(figsize=(12, 8))
     plt.scatter(energy, area, color='blue', label='Data points')
-    plt.errorbar(energy, area, area_error, color='blue', capsize=5, alpha=0.25, ls='')
+    plt.errorbar(x=energy, y=area, xerr=std_dev, yerr=area_error, color='blue', capsize=5, alpha=0.25, ls='')
     plt.plot(x_range, area_extrapolated, color=plot_color, linewidth=2, label='Extrapolated Regression Line')
     plt.fill_between(x_range, area_extrapolated - std_dev, area_extrapolated + std_dev, alpha=0.25, color=plot_color)
 
+    if save_data:
+        ene_area = pd.DataFrame([energy, area, area_error]).T
+        ene_area.columns = ['energy', 'area', 'area_error']
+
+        extrapolated = pd.DataFrame([x_range, area_extrapolated, [std_dev] * len(x_range)]).T
+        extrapolated.columns = ['x_range', 'area_extrapolated', 'error']
+
+        ene_area.to_csv('./energy_area.csv', index=False)
+        extrapolated.to_csv('./extrapolated_area.csv', index=False)
+
     # Annotate each data point with its energy value
     for x, y in zip(energy, area):
-        plt.text(x, y, f'{x:.2f}', fontsize=10, ha='right')
+        plt.text(x, y, f'{x:.3f}', fontsize=10, ha='right')
 
     if lyso:
         lyso_peaks = [88, 202 + 88, 307 + 88, 202 + 88 + 307]
@@ -226,6 +236,8 @@ def regression_and_plot_with_peaks(energy_values, area_values, title='Regression
         plt.savefig(save_file_name, dpi=plot_dpi)
     plt.show()
 
+    return model
+
 
 ######################################################################################################
 
@@ -271,10 +283,8 @@ def plot_fwhm_resolution(mu_values, sigma_values, x_label=None, save_plot=None, 
         Displays the generated regression plots. Saves the figure if a file path is provided.
     """
     # Create a DataFrame for plotting
-    mu_errs = mu_values[:, 1]
-    sigma_errs = sigma_values[:, 1]
-    mu_values = mu_values[:, 0]
-    sigma_values = sigma_values[:, 0]
+    mu_values = mu_values
+    sigma_values = sigma_values
 
     fwhm, res = calculate_resolution_and_fwhm(sigma_values, mu_values)
 
@@ -290,7 +300,7 @@ def plot_fwhm_resolution(mu_values, sigma_values, x_label=None, save_plot=None, 
                 color='#1f77b4')
     if show_error_bars:
         ax[0].errorbar(data['Mu'], data['FWHM'],
-                       xerr=mu_errs, yerr=np.std(data['FWHM'].to_numpy()),
+                       xerr=sigma_values, yerr=np.std(data['FWHM'].to_numpy()),
                        ls='', capsize=5, color='#1f77b4')
     ax[0].set_xlabel(x_label, fontsize=font_size)
     ax[0].set_ylabel('FWHM', fontsize=font_size)
@@ -304,7 +314,7 @@ def plot_fwhm_resolution(mu_values, sigma_values, x_label=None, save_plot=None, 
                 ax=ax[1], color='#1f77b4')
     if show_error_bars:
         ax[1].errorbar(data['Mu'], data['Resolution'],
-                       xerr=mu_errs, yerr=np.std(data['Resolution'].to_numpy()),
+                       xerr=sigma_values, yerr=np.std(data['Resolution'].to_numpy()),
                        ls='', capsize=5, color='#1f77b4')
     ax[1].set_xlabel(x_label, fontsize=font_size)
     ax[1].set_ylabel('Resolution', fontsize=font_size)
@@ -373,7 +383,7 @@ def process_and_plot_spectra(signal, background, signal_duration, background_dur
     corrected_signal = (signal_values / signal_duration) - (background_scaled / background_duration)
 
     # we do not want negative area values, so we keep only x > 0
-    mask_ = common_x > 0
+    mask_ = common_x  # > 0
     common_x = np.where(mask_, common_x, np.nan)
     # apply the mask on the good values x > 0
     sig = np.where(mask_, signal_values / signal_duration, np.nan)
