@@ -66,13 +66,14 @@ def plot_calibrated_spectrum(data,
     calibrated_energy = np.polyval(model, data[x_variable].to_numpy())
 
     # Plot the calibrated spectrum
-    plt.figure(figsize=fig_size)
-    plt.plot(calibrated_energy, data['counts'], color=color, label='Calibrated Spectrum')
+    f, ax = plt.subplots(figsize=fig_size)
+    # ax.figure(figsize=fig_size)
+    ax.plot(calibrated_energy, data['counts'], color=color, label='Calibrated Spectrum')
 
     # Drop vertical lines at identified peaks with automatic colors
     cmap = get_cmap("tab10")  # Use a color map for automatic coloring
     for i, energy in enumerate(energy_values):
-        plt.axvline(energy, color=cmap(i % 10), linestyle='--', label=f'{energy} keV')
+        ax.axvline(energy, color=cmap(i % 10), linestyle='--', label=f'{energy} keV')
 
     # Apply user-specified x-axis limits
     if x_limits:
@@ -87,7 +88,9 @@ def plot_calibrated_spectrum(data,
     plt.grid(False)
     if save_plot:
         plt.savefig(save_file_name, dpi=plot_dpi)
-    plt.show()
+    # plt.show()
+
+    return ax, model
 
 
 ######################################################################################################
@@ -160,7 +163,7 @@ def regression_and_plot_with_peaks(energy_values, area_values, sigma_values, tit
     # Plot original data points, regression line, and confidence interval
     plt.figure(figsize=(12, 8))
     plt.scatter(energy, area, color='blue', label='Data points')
-    plt.errorbar(x=energy, y=area, xerr=std_dev, yerr=area_error, color='blue', capsize=5, alpha=0.25, ls='')
+    plt.errorbar(x=energy, y=area, yerr=area_error, color='blue', capsize=5, alpha=0.25, ls='')
     plt.plot(x_range, area_extrapolated, color=plot_color, linewidth=2, label='Extrapolated Regression Line')
     plt.fill_between(x_range, area_extrapolated - std_dev, area_extrapolated + std_dev, alpha=0.25, color=plot_color)
 

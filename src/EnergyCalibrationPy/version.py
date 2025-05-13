@@ -1,6 +1,6 @@
 """Created on Nov 02 21:24:07 2024"""
 
-__version__ = "1.5.0"
+__version__ = "1.6.0"
 __author__ = "Iqra Siddique"
 __email__ = "iqra.siddique07@gmail.com"
 __license__ = "MIT"
