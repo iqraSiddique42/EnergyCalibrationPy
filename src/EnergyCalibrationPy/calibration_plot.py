@@ -17,6 +17,7 @@ def plot_calibrated_spectrum(data,
                              title='Energy Calibration',
                              x_label='Energy [keV]',
                              y_label='Counts/s',
+                             data_label='Calibrated spectrum',
                              fig_size=(12, 8),
                              save_plot=False,
                              save_file_name=None,
@@ -68,12 +69,12 @@ def plot_calibrated_spectrum(data,
     # Plot the calibrated spectrum
     f, ax = plt.subplots(figsize=fig_size)
     # ax.figure(figsize=fig_size)
-    ax.plot(calibrated_energy, data['counts'], color=color, label='Calibrated Spectrum')
+    ax.plot(calibrated_energy, data['counts'], color=color, label=data_label)
 
     # Drop vertical lines at identified peaks with automatic colors
-    cmap = get_cmap("tab10")  # Use a color map for automatic coloring
-    for i, energy in enumerate(energy_values):
-        ax.axvline(energy, color=cmap(i % 10), linestyle='--', label=f'{energy} keV')
+    # cmap = get_cmap("tab10")  # Use a color map for automatic coloring
+    # for i, energy in enumerate(energy_values):
+    #     ax.axvline(energy, color=cmap(i % 10), linestyle='--', label=f'{energy} keV')
 
     # Apply user-specified x-axis limits
     if x_limits:
@@ -120,127 +121,151 @@ def process_and_plot_files(file_path, x_variable, y_variable, x_label, y_label, 
 
 ######################################################################################################
 
-def regression_and_plot_with_peaks(energy_values, area_values, sigma_values, title='Regression Plot Energy → Area',
-                                   plot_color='red',
-                                   co60=False, cs137=False, na22=False, ba133=False, lyso=False,
-                                   extrapolation_range=(10, 1500), num_points=500, x_label=None, fontsize=16,
-                                   y_label=None, save_plot=None, save_file_name=None, plot_dpi=None, save_data=False):
-    """
-    Performs linear regression on energy-area data, plots the data points, regression line, and confidence interval,
-    and highlights peaks for specific isotopes.
+def regression_and_plot_with_peaks(
+    energy_values,
+    area_values,
+    sigma_values,
+    title='Regression Plot Energy → Area',
+    plot_color='red',
+    co60=False, cs137=False, na22=False, ba133=False, lyso=False,
+    extrapolation_range=(10, 1500), num_points=500,
+    x_label=None, y_label=None,
+    fontsize=16,
+    tick_size=14, tick_length_major=7, tick_length_minor=4, tick_width=1.1,
+    enable_minor_ticks=True,
+    # --- NEW: CI (confidence band) controls ---
+    show_ci=True, ci_alpha=0.25, ci_in_legend=False, ci_label='±1σ (residual)',
+    save_plot=None, save_file_name=None, plot_dpi=None, save_data=False,
+    color_marker=None, elements=None
+):
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
 
-    Parameters:
-        energy_values (list or array): Known energy values.
-        area_values np.ndarray: Corresponding area values.
-        title (str): Title of the plot.
-        plot_color (str): Color of the regression line and confidence interval.
-        co60_peaks (list): Energies for Co-60 peaks.
-        cs137_peak (list): Energy for Cs-137 peak.
-        na22_peaks (list): Energies for Na-22 peaks.
-        ba133_peaks (list): Energies for Ba-133 peaks.
-        extrapolation_range (tuple): Range for extrapolation in energy values.
-        num_points (int): Number of points for extrapolated line.
-    """
-    # Convert energy and area to numpy arrays
     energy = np.array(energy_values)
-    area = area_values
-    area_error = sigma_values
+    area = np.array(area_values)
+    area_error = np.array(sigma_values)
 
-    # Perform linear regression
-    polynomial_order = 1
-    coefficients = np.polyfit(energy, area, polynomial_order)
+    # Linear regression
+    coefficients = np.polyfit(energy, area, 1)
     model = np.poly1d(coefficients)
 
-    # Define extended energy range for extrapolation
+    # Extrapolated line
     x_range = np.linspace(extrapolation_range[0], extrapolation_range[1], num_points)
     area_extrapolated = model(x_range)
 
-    # Calculate residuals and standard deviation for confidence interval
-    y_predicted = model(energy)
-    residuals = area - y_predicted
-    std_dev = np.std(residuals)
+    # Residual std for ±1σ band
+    y_pred = model(energy)
+    residuals = area - y_pred
+    std_dev = np.std(residuals, ddof=1) if len(residuals) > 1 else 0.0
 
-    # Plot original data points, regression line, and confidence interval
+    # Plot
     plt.figure(figsize=(12, 8))
-    plt.scatter(energy, area, color='blue', label='Data points')
-    plt.errorbar(x=energy, y=area, yerr=area_error, color='blue', capsize=5, alpha=0.25, ls='')
-    plt.plot(x_range, area_extrapolated, color=plot_color, linewidth=2, label='Extrapolated Regression Line')
-    plt.fill_between(x_range, area_extrapolated - std_dev, area_extrapolated + std_dev, alpha=0.25, color=plot_color)
+    ax = plt.gca()
 
+    # Scatter with labels
+    c_ = color_marker if color_marker is not None else ['C0'] * len(energy)
+    e_ = elements if elements is not None else [''] * len(energy)
+    for E, A, col, lab in zip(energy, area, c_, e_):
+        ax.scatter(E, A, color=col, label=(f'{lab}: {E} keV' if lab else None), zorder=10)
+
+    # Error bars
+    ax.errorbar(x=energy, y=area, yerr=area_error, color='blue', capsize=5, ls='', zorder=9)
+
+    # Regression line
+    ax.plot(x_range, area_extrapolated, color=plot_color, linewidth=2, zorder=8)
+
+    # --- CI band (now controllable; NOT in legend by default) ---
+    if show_ci and std_dev > 0:
+        band_kwargs = dict(alpha=ci_alpha, color=plot_color, zorder=7)
+        if ci_in_legend:
+            band_kwargs['label'] = ci_label
+        else:
+            band_kwargs['label'] = '_nolegend_'   # Matplotlib ignores this in legend
+        ax.fill_between(x_range, area_extrapolated - std_dev,
+                        area_extrapolated + std_dev, **band_kwargs)
+
+    # Grid + ticks
+    ax.grid(True, alpha=0.25, ls='--')
+    if enable_minor_ticks:
+        ax.minorticks_on()
+    ax.tick_params(axis='both', which='major', labelsize=tick_size,
+                   length=tick_length_major, width=tick_width)
+    ax.tick_params(axis='both', which='minor', labelsize=max(tick_size-2, 1),
+                   length=tick_length_minor, width=max(tick_width-0.2, 0.5))
+
+    # --- Isotope annotations ---
+    if lyso:
+        lyso_peaks = [88, 290, 395, 597]
+        first = True
+        for pk in lyso_peaks:
+            ypk = model(pk)
+            ax.plot(pk, ypk, 'o', color='black', label='LYSO (proj.)' if first else None, zorder=11)
+            ax.text(pk, ypk, f'({pk:.1f} keV, {ypk:.2e} Wb)', color='black',
+                    fontsize=max(fontsize-4, 8), ha='left', va='bottom')
+            first = False
+    if co60:
+        first = True
+        for pk in [1173.2, 1332.5]:
+            ypk = model(pk)
+            ax.plot(pk, ypk, 'o', color='black', label='Co-60 Peaks' if first else None, zorder=11)
+            ax.text(pk, ypk, f'({pk:.1f} keV, {ypk:.2e} Wb)', color='black',
+                    fontsize=max(fontsize-4, 8), ha='left', va='bottom')
+            first = False
+    if cs137:
+        pk = 662
+        ypk = model(pk)
+        ax.plot(pk, ypk, 'o', color='maroon', label='Cs-137 Peak', zorder=11)
+        ax.text(pk, ypk, f'({pk} keV, {ypk:.2e} Wb)', color='maroon',
+                fontsize=max(fontsize-4, 8), ha='left', va='bottom')
+    if na22:
+        first = True
+        for pk in [511, 1274]:
+            ypk = model(pk)
+            ax.plot(pk, ypk, 'o', color='cyan', label='Na-22 Peaks' if first else None, zorder=11)
+            ax.text(pk, ypk, f'({pk:.1f} keV, {ypk:.2e} Wb)', color='cyan',
+                    fontsize=max(fontsize-4, 8), ha='left', va='bottom')
+            first = False
+    if ba133:
+        first = True
+        for pk in [81, 356]:
+            ypk = model(pk)
+            ax.plot(pk, ypk, 'o', color='magenta', label='Ba-133 Peaks' if first else None, zorder=11)
+            ax.text(pk, ypk, f'({pk:.1f} keV, {ypk:.2e} Wb)', color='magenta',
+                    fontsize=max(fontsize-4, 8), ha='left', va='bottom')
+            first = False
+
+    # Labels & (optional) title
+    ax.set_xlabel(x_label if x_label else 'Energy [keV]', fontsize=fontsize)
+    ax.set_ylabel(y_label if y_label else 'Area [Wb]', fontsize=fontsize)
+    if title:
+        ax.set_title(title, fontsize=fontsize)
+
+    # De-duplicate legend
+    handles, labels = ax.get_legend_handles_labels()
+    dedup = {}
+    for h, l in zip(handles, labels):
+        if l and l not in dedup and l != '_nolegend_':
+            dedup[l] = h
+    if dedup:
+        ax.legend(dedup.values(), dedup.keys(), loc='best', fontsize=max(fontsize-2, 8))
+
+    plt.tight_layout()
+
+    # Save data
     if save_data:
-        ene_area = pd.DataFrame([energy, area, area_error]).T
-        ene_area.columns = ['energy', 'area', 'area_error']
-
-        extrapolated = pd.DataFrame([x_range, area_extrapolated, [std_dev] * len(x_range)]).T
-        extrapolated.columns = ['x_range', 'area_extrapolated', 'error']
-
+        ene_area = pd.DataFrame({'energy': energy, 'area': area, 'area_error': area_error})
+        extrapolated = pd.DataFrame({'x_range': x_range,
+                                     'area_extrapolated': area_extrapolated,
+                                     'error': np.full_like(x_range, std_dev)})
         ene_area.to_csv('./energy_area.csv', index=False)
         extrapolated.to_csv('./extrapolated_area.csv', index=False)
 
-    # Annotate each data point with its energy value
-    for x, y in zip(energy, area):
-        plt.text(x, y, f'{x:.3f}', fontsize=10, ha='right')
-
-    if lyso:
-        lyso_peaks = [88, 202 + 88, 307 + 88, 202 + 88 + 307]
-        for peak_energy in lyso_peaks:
-            peak_area = model(peak_energy)
-            plt.plot(peak_energy, peak_area, 'o', color='black',
-                     label='Co-60 Peaks' if peak_energy == lyso_peaks[0] else "")
-            plt.text(peak_energy, peak_area, f'({peak_energy:.1f} keV, {peak_area:.2e} Wb)', color='black', fontsize=10,
-                     ha='left')
-
-    # Display Co-60 peaks with (energy, area) annotation in black
-    if co60:
-        co60_peaks = [1173.2, 1332.5]
-        for peak_energy in co60_peaks:
-            peak_area = model(peak_energy)
-            plt.plot(peak_energy, peak_area, 'o', color='black',
-                     label='Co-60 Peaks' if peak_energy == co60_peaks[0] else "")
-            plt.text(peak_energy, peak_area, f'({peak_energy:.1f} keV, {peak_area:.2e} Wb)', color='black', fontsize=10,
-                     ha='left')
-
-    # Display Cs-137 peak with (energy, area) annotation in maroon
-    if cs137:
-        cs137_peak = 662
-        cs137_area = model(cs137_peak)
-        plt.plot(cs137_peak, cs137_area, 'o', color='maroon', label='Cs-137 Peak')
-        plt.text(cs137_peak, cs137_area, f'({cs137_peak} keV, {cs137_area:.2e} Wb)', color='maroon', fontsize=10,
-                 ha='left')
-
-    # Display Na-22 peaks with (energy, area) annotation in cyan
-    if na22:
-        na22_peaks = [511, 1274]  # Energies for Na-22 in keV
-        for peak_energy in na22_peaks:
-            peak_area = model(peak_energy)
-            plt.plot(peak_energy, peak_area, 'o', color='cyan',
-                     label='Na-22 Peaks' if peak_energy == na22_peaks[0] else "")
-            plt.text(peak_energy, peak_area, f'({peak_energy:.1f} keV, {peak_area:.2e} Wb)', color='cyan', fontsize=10,
-                     ha='left')
-
-    # Display Ba-133 peaks with (energy, area) annotation in yellow
-    if ba133:
-        ba133_peaks = [81, 356]  # Energies for Ba-133 in keV
-        for peak_energy in ba133_peaks:
-            peak_area = model(peak_energy)
-            plt.plot(peak_energy, peak_area, 'o', color='magenta',
-                     label='Ba-133 Peaks' if peak_energy == ba133_peaks[0] else "")
-            plt.text(peak_energy, peak_area, f'({peak_energy:.1f} keV, {peak_area:.2e} Wb)', color='magenta',
-                     fontsize=10, ha='left')
-
-    # Labeling axes and title
-    plt.xlabel(x_label, fontsize=fontsize)
-    plt.ylabel(y_label, fontsize=fontsize)
-    plt.title(title, fontsize=fontsize)
-    plt.legend(loc='best', fontsize=fontsize - 2)
-    plt.tight_layout()
-    plt.grid(False)
     if save_plot:
         plt.savefig(save_file_name, dpi=plot_dpi)
+
     plt.show()
-
     return model
-
 
 ######################################################################################################
 

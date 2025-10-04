@@ -103,19 +103,36 @@ def calculate_resolution_and_fwhm(sigma, mu):
 ###########################################################################
 
 def gaussian_fitter(dataframe, x, y, p0, normalization=1., x_label=None, y_label=None, title=None,
-                    fig_size=(12, 6)) -> GaussianFitter:
+                    fig_size=(12, 6), save=False, save_path=None, save_dpi=300, show=True) -> GaussianFitter:
     temp_ = dataframe.copy(deep=True)
     temp_[x] = temp_[x] / normalization
 
-    _, ax = plt.subplots(1, 1, figsize=fig_size)
+    fig, ax = plt.subplots(1, 1, figsize=fig_size)
 
     fitter = GaussianFitter(temp_[x], temp_[y])
     fitter.fit(p0)
-    fitter.plot_fit(show_individual=True, x_label=x_label, y_label=y_label, title=title, axis=ax)
-    plt.tight_layout()
-    plt.show()
+    fitter.plot_fit(show_individuals=True, x_label=x_label, y_label=y_label, title=r'$\ $', axis=ax)
 
+    ax.grid(visible=True, ls='--', color='grey', alpha=0.25)
+    ax.set_xlabel(xlabel=x_label, fontsize=16)
+    ax.set_ylabel(ylabel=y_label, fontsize=16)
+    ax.tick_params(axis='both', which='major', labelsize=16)
+    plt.tight_layout()
+
+    if save:
+        # if no explicit path given, fall back to title (if any)
+        if save_path is None:
+            fname = f"Gaussian_Fit_{title}.png" if title else "Gaussian_Fit.png"
+        else:
+            fname = save_path
+        fig.savefig(fname, dpi=save_dpi)
+
+    if show:
+        plt.show()
+
+    plt.close(fig)  # important to avoid reusing the figure in later cells
     return fitter
+
 
 
 def parameter_extractor(fitter, gaussian_numbers, normalization=1., get_errors=False):
